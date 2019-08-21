@@ -100,9 +100,11 @@ public class FreeswitchManager {
 
                     if (VertoMethod.Answer.matches(method)) {
                         String callId = GsonUtil.getStringOrThrow(params, "callID");
-                        CallAnswerEvent cEv = new CallAnswerEvent();
-                        cEv.setCallId(callId);
-                        getEndpoint(callId).inject(cEv);
+                        CallAnswerEvent cEv = CallAnswerEvent.get(
+                            callId,
+                            GsonUtil.findString(params, "sdp").orElse(""));
+                        FreeswitchEndpoint ep = getEndpoint(callId);
+                        ep.inject(cEv);
                     }
 
                     if (VertoMethod.Bye.matches(method)) {

@@ -107,7 +107,6 @@ public class FreeswitchEndpoint extends GenericEndpoint {
     }
 
     void inject(CallAnswerEvent ev) {
-        ev.getAnswer().setSdp(fsSdp);
         fireCallEvent(l -> l.onAnswer(ev));
     }
 
