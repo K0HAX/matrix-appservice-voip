@@ -46,7 +46,7 @@ public class FreeswitchManager {
     private FreeswitchVertoClient client;
 
     private Map<String, FreeswitchEndpoint> endpoints = new ConcurrentHashMap<>();
-
+    private Map<String, String> remoteSdpMap = new ConcurrentHashMap<>();
     private List<FreeswitchListener> listeners = new ArrayList<>();
 
     private JsonObject withObject(Consumer<JsonObject> consumer) {
@@ -92,17 +92,17 @@ public class FreeswitchManager {
 
                     if (VertoMethod.Media.matches(method)) {
                         String callId = GsonUtil.getStringOrThrow(params, "callID");
-                        getEndpoint(callId).inject(CallSdpEvent.get(
-                                callId,
-                                GsonUtil.findString(params, "sdp").orElse(""))
-                        );
+                        String sdp = GsonUtil.findString(params, "sdp").orElse("");
+                        remoteSdpMap.put(callId, sdp);
+                        getEndpoint(callId).inject(CallSdpEvent.get(callId, sdp));
                     }
 
                     if (VertoMethod.Answer.matches(method)) {
                         String callId = GsonUtil.getStringOrThrow(params, "callID");
                         CallAnswerEvent cEv = CallAnswerEvent.get(
                             callId,
-                            GsonUtil.findString(params, "sdp").orElse(""));
+                            GsonUtil.findString(params, "sdp").orElse(remoteSdpMap.getOrDefault(callId, "")));
+                        remoteSdpMap.remove(callId);
                         FreeswitchEndpoint ep = getEndpoint(callId);
                         ep.inject(cEv);
                     }
@@ -110,6 +110,7 @@ public class FreeswitchManager {
                     if (VertoMethod.Bye.matches(method)) {
                         String callId = GsonUtil.getStringOrThrow(params, "callID");
                         String cause = GsonUtil.getStringOrNull(params, "cause");
+                        remoteSdpMap.remove(callId);
                         if ("ORIGINATOR_CANCEL".equals(cause) || "NORMAL_CLEARING".equals(cause)) cause = null;
                         getEndpoint(callId).inject(CallHangupEvent.from(
                                 callId,
